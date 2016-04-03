@@ -8,12 +8,15 @@ This is where the CrabSTIX project comes in. This code base will aim to provide 
 
 CrabSTIX will start as a syslog to TAXII translator service for the IDS/IPS community, and with the help of your support, we will grow out to translate feeds from the majoprity of security devices and vendor families.
 
-Installation
+CrabSTIX creates a central aggregation point for syslog messages (just suricata currently). Messages sent to the CrabSTIX server are parsed into STIX format and sent via TAXII InboxMessages to a TAXII endpoint of your choosing.
+
+Dependencies
 ------------
+This project requires
 
-The easiest way to install most Python packages is via ``easy_install`` or ``pip``::
-
-    $ easy_install CrabSTIX
+    libtaxii
+    python-stix
+    netaddr
 
 Usage
 -----
