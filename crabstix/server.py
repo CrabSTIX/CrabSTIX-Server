@@ -88,9 +88,9 @@ class LogHandler(SocketServer.BaseRequestHandler):
 						# TODO: Log this to a file
 						stix_log = self.server._parsers[parser].parse(log_line)
 
-						if stix_log:
+						if stix_log and self.server._config["TAXII"]["enabled"]:
 
-							#TODO: Send to TAXII - http://libtaxii.readthedocs.org/en/stable/api/clients.html
+							#InProgress: Send to TAXII - http://libtaxii.readthedocs.org/en/stable/api/clients.html
 							# 					 - http://libtaxii.readthedocs.org/en/stable/api/messages_11.html#inbox-message
 							#					 - https://github.com/TAXIIProject/libtaxii/blob/master/libtaxii/scripts/inbox_client.py
 
@@ -105,9 +105,14 @@ class LogHandler(SocketServer.BaseRequestHandler):
 							# Built the full XML body
 							inbox_message = tm11.InboxMessage(message_id=tm11.generate_message_id(),content_blocks=[cb])
 							inbox_xml = inbox_message.to_xml(pretty_print=True)
-							# Send to taxitest
-							http_resp = client.call_taxii_service2('taxiitest.mitre.org', '/services/inbox/', VID_TAXII_XML_11, inbox_xml)
+
+							# Send to TAXII endpoint
+							http_resp = client.call_taxii_service2(self.server._config["TAXII"]["hostname"],
+																   self.server._config["TAXII"]["inbox_endpoint"],
+																    VID_TAXII_XML_11, inbox_xml)
 							taxii_message = t.get_message_from_http_response(http_resp, inbox_message.message_id)
+							
+							# TODO: Parse for success
 							print taxii_message.to_xml(pretty_print=True)
 
 						parsed_flag = True
@@ -120,4 +125,4 @@ class LogHandler(SocketServer.BaseRequestHandler):
 			else:
 				
 				# The connection has ended
-				break
+				break	
