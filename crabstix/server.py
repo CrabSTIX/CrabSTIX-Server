@@ -9,10 +9,14 @@
 # Function :	Listen to a user supplied port, pass logs to relevant parsers
 # Called By:	main.py
 
+# Python
 import os
 import SocketServer
-from config import Reader
+import urllib2
 
+# Local
+from log_manager import Logging
+from config import Reader
 import crabstix.parsers
 
 #TAXII
@@ -45,10 +49,8 @@ class CrabSTIXServer(SocketServer.ThreadingTCPServer):
 		:param ConfigPath: The path to our crabstix.conf
 		"""
 		self._config = Reader().get_config(ConfigPath)
+		self._logging = Logging.get_instance(self._config)
 
-		SocketServer.ThreadingTCPServer.__init__(self,
-												(self._config["SERVER"]["host"],int(self._config["SERVER"]["port"])),
-												RequestHandlerClass)
 
 		# Load all the parsers
 		self._parsers = {}
@@ -60,6 +62,17 @@ class CrabSTIXServer(SocketServer.ThreadingTCPServer):
 
 				# Import the module, load the Parser class, store in a dict by parser name
 				self._parsers[module[:-3]] = (getattr(getattr(crabstix.parsers, module[:-3]),"Parser")())
+				self._logging.info("Loaded parser %s" % (module[:-3]),
+								   "server.py",
+								   "informational")
+
+		# Start the server
+		SocketServer.ThreadingTCPServer.__init__(self,
+												(self._config["SERVER"]["host"],int(self._config["SERVER"]["port"])),
+												RequestHandlerClass)
+		self._logging.info("Server started on %s:%s" % (self._config["SERVER"]["host"],int(self._config["SERVER"]["port"])),
+								   "server.py",
+								   "informational")
 
 class LogHandler(SocketServer.BaseRequestHandler):
 
@@ -78,49 +91,83 @@ class LogHandler(SocketServer.BaseRequestHandler):
 			log_line = self.request.recv(1024) 
 			if log_line != "":
 				
-				print( "%s : " % self.client_address[0], str(log_line))		
+				self.server._logging.debug("%s - %s" % (self.client_address[0], str(log_line.rstrip("\n"))),
+									"server.py",
+									"received_log")		
 				
-				parsed_flag = False
+				identified_flag = False
 				for parser in self.server._parsers:
 
 					if self.server._parsers[parser].identify(log_line):
 
+						# Mark as identified
+						identified_flag = True
+
 						# TODO: Log this to a file
 						stix_log = self.server._parsers[parser].parse(log_line)
 
-						if stix_log and self.server._config["TAXII"]["enabled"]:
+						if stix_log:
 
-							#InProgress: Send to TAXII - http://libtaxii.readthedocs.org/en/stable/api/clients.html
-							# 					 - http://libtaxii.readthedocs.org/en/stable/api/messages_11.html#inbox-message
-							#					 - https://github.com/TAXIIProject/libtaxii/blob/master/libtaxii/scripts/inbox_client.py
+							# Stix parsed correctly
 
-							# Make a client
-							client = tc.HttpClient()
-							client.set_auth_type(tc.HttpClient.AUTH_NONE)
-							client.set_use_https(False)
+							# Write to file
+							self.server._logging.stix(stix_log)
 
-							# Build a content block
-							cb = tm11.ContentBlock(tm11.ContentBinding("CB_STIX_XML_111"), stix_log)
+							# If TAXII is enabled - send to taxii
+							if self.server._config["TAXII"]["enabled"]:
 
-							# Built the full XML body
-							inbox_message = tm11.InboxMessage(message_id=tm11.generate_message_id(),content_blocks=[cb])
-							inbox_xml = inbox_message.to_xml(pretty_print=True)
+								#InProgress: Send to TAXII - http://libtaxii.readthedocs.org/en/stable/api/clients.html
+								# 						   - http://libtaxii.readthedocs.org/en/stable/api/messages_11.html#inbox-message
+								#					 	   - https://github.com/TAXIIProject/libtaxii/blob/master/libtaxii/scripts/inbox_client.py
 
-							# Send to TAXII endpoint
-							http_resp = client.call_taxii_service2(self.server._config["TAXII"]["hostname"],
-																   self.server._config["TAXII"]["inbox_endpoint"],
-																    VID_TAXII_XML_11, inbox_xml)
-							taxii_message = t.get_message_from_http_response(http_resp, inbox_message.message_id)
-							
-							# TODO: Parse for success
-							print taxii_message.to_xml(pretty_print=True)
+								# Make a client
+								client = tc.HttpClient()
+								client.set_auth_type(tc.HttpClient.AUTH_NONE)
+								client.set_use_https(False)
 
-						parsed_flag = True
+								# Build a content block
+								cb = tm11.ContentBlock(tm11.ContentBinding("CB_STIX_XML_111"), stix_log)
+
+								# Built the full XML body
+								inbox_message = tm11.InboxMessage(message_id=tm11.generate_message_id(),content_blocks=[cb])
+								inbox_xml = inbox_message.to_xml(pretty_print=True)
+
+								try:
+
+									# Send to TAXII endpoint
+									http_resp = client.call_taxii_service2(self.server._config["TAXII"]["hostname"],
+																		   self.server._config["TAXII"]["inbox_endpoint"],
+																		    VID_TAXII_XML_11, inbox_xml)
+
+									taxii_message = t.get_message_from_http_response(http_resp, inbox_message.message_id)
+								
+								except urllib2.URLError:
+
+									self.server._logging.error("Failed to send message to TAXII endpoint: URLError",
+															   "server.py",
+															   "taxii_error")
+
+								else:
+									# TODO: Parse for success
+									print taxii_message.to_xml(pretty_print=True)
+
+						else:
+
+							self.server._logging.error("%s parser failed to parse a message, it will be added to the unparsable log." % (parser),
+												"server.py",
+												"parse_error")
+
+							self.server._logging.unparsable(log_line)
+
 
 				# Check if parsed
-				if not parsed_flag:
+				if not identified_flag:
 
-					print "No matching parsers were available for this log"
+					self.server._logging.error("No matching parsers were found for a log, it will be added to the unparsable log.",
+										"server.py",
+										"parse_error")
+
+					self.server._logging.unparsable(log_line)
 
 			else:
 				
