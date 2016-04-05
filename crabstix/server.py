@@ -61,7 +61,7 @@ class CrabSTIXServer(SocketServer.ThreadingTCPServer):
 			if module.endswith(".py") and module != "__init__.py":
 
 				# Import the module, load the Parser class, store in a dict by parser name
-				self._parsers[module[:-3]] = (getattr(getattr(crabstix.parsers, module[:-3]),"Parser")())
+				self._parsers[module[:-3]] = (getattr(getattr(crabstix.parsers, module[:-3]),"Parser")(self._config))
 				self._logging.info("Loaded parser %s" % (module[:-3]),
 								   "server.py",
 								   "informational")
@@ -121,19 +121,41 @@ class LogHandler(SocketServer.BaseRequestHandler):
 								#					 	   - https://github.com/TAXIIProject/libtaxii/blob/master/libtaxii/scripts/inbox_client.py
 
 								# Make a client
-								# TODO: Handle user and pass
+
 								# TODO: Handle https
 								client = tc.HttpClient()
-								client.set_auth_type(tc.HttpClient.AUTH_NONE)
-								client.set_use_https(False)
+								
 
-								# Build a content block
-								cb = tm11.ContentBlock(tm11.ContentBinding("CB_STIX_XML_111"), stix_log)
+								if self.server._config["TAXII"]["authentication"] == "NONE":
+
+									client.set_auth_type(tc.HttpClient.AUTH_NONE)
+									client.set_use_https(False)
+
+								elif self.server._config["TAXII"]["authentication"] == "BASIC":
+
+									client.set_auth_type(tc.HttpClient.AUTH_BASIC)
+									client.set_auth_credentials({'username': self.server._config["TAXII"]["username"],
+																 'password': self.server._config["TAXII"]["password"]})
+
+								else:
+
+									self.server._logging.error("Failed to send message to TAXII endpoint: Invalid HTTP AUTH",
+															   "server.py",
+															   "taxii_error")
+									break
+
+								# Build a content block CB_STIX_XML_111"
+								cb = tm11.ContentBlock(tm11.ContentBinding(CB_STIX_XML_111), stix_log)
 
 								# Built the full XML body
 								inbox_message = tm11.InboxMessage(message_id=tm11.generate_message_id(),content_blocks=[cb])
-								inbox_xml = inbox_message.to_xml(pretty_print=True)
 
+								# Add dcns
+								if self.server._config["TAXII"]["inbox_dcn"]:
+									inbox_message.destination_collection_names.append(self.server._config["TAXII"]["inbox_dcn"])
+
+								inbox_xml = inbox_message.to_xml(pretty_print=True)
+								print inbox_xml
 								try:
 
 									# Send to TAXII endpoint

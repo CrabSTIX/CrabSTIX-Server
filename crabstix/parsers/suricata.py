@@ -16,6 +16,12 @@ import datetime
 # STIX 
 from stix.core import STIXPackage, STIXHeader
 from stix.incident import Incident,Time
+from stix.common.related import RelatedObservable
+#Namespace fun
+from cybox.utils.nsparser import Namespace
+import cybox.utils
+import stix.utils
+
 from cybox.core import Observable 
 from cybox.objects.address_object import Address
 
@@ -28,9 +34,11 @@ class Parser:
 	Identified on the format of a Suricata IDS log and parses syslog line to STIX/CybOX incidents
 
 	"""
-	def __init__(self):
+	def __init__(self,argument_config):
 
 		self._name = __name__
+
+		self._config = argument_config
 
 		self._regex = {}
 		self._regex["time"] = "^(.*?)(\.\d+)?\s+"
@@ -85,9 +93,11 @@ class Parser:
 		#TODO: Time Zones
 		parsed_suricata_log["unix_timestamp"] = time.mktime(datetime.datetime.strptime(parsed_suricata_log["time"], "%m/%d/%Y-%H:%M:%S").timetuple())
 
-
 		# Find IP's of interest
-		if IPAddress(parsed_suricata_log["source_ip"]).is_private() == False or IPAddress(parsed_suricata_log["destination_ip"]).is_public() == False:
+		if IPAddress(parsed_suricata_log["source_ip"]).is_private() == False or IPAddress(parsed_suricata_log["destination_ip"]).is_private() == False:
+
+			# Name Space
+			stix.utils.idgen.set_id_namespace(Namespace(self._config["NAMESPACE"]["url"], self._config["NAMESPACE"]["name"],""))
 
 			stix_package = STIXPackage()
 
@@ -95,11 +105,13 @@ class Parser:
 			if not IPAddress(parsed_suricata_log["source_ip"]).is_private() and IPAddress(parsed_suricata_log["destination_ip"]).is_private():
 
 				incident = Incident(title="[IDS Alert] "+parsed_suricata_log["text"]+" From "+ parsed_suricata_log["source_ip"])
+
 				addr = Address(address_value=parsed_suricata_log["source_ip"], category=Address.CAT_IPV4)
 
 			elif IPAddress(parsed_suricata_log["source_ip"]).is_private() and not IPAddress(parsed_suricata_log["destination_ip"]).is_private():
 
 				incident = Incident(title="[IDS Alert] "+parsed_suricata_log["text"]+" To "+ parsed_suricata_log["destination_ip"])
+
 				addr = Address(address_value=parsed_suricata_log["destination_ip"], category=Address.CAT_IPV4)
 			
 			else:
@@ -107,10 +119,18 @@ class Parser:
 				#public to public - i can't tell who the bad guy is
 				return False
 
+			observable = Observable(item=addr,
+									title="[IP Associated To IDS Alert] "+parsed_suricata_log["text"],
+									description="""This ip address was seen to be involved in triggering the IDS alert %s if 
+seen from multiple sources, this is a good indicator of a potential threat actor or compromised host""" % (parsed_suricata_log["text"]))
+			stix_package.add_observable(observable)
+
 			incident.time = Time()
 			incident.time.first_malicious_action = parsed_suricata_log["time"]
-			observable = Observable(item=addr)
-			stix_package.add_observable(observable)
+
+			related_observable = RelatedObservable(Observable(idref=observable.id_))
+			incident.related_observables.append(related_observable)
+
 			stix_package.add_incident(incident)
 
 		return stix_package.to_xml()
