@@ -16,12 +16,25 @@ class Reader():
 	"""
 	Wrapper for SafeConfigParser. Converts config file into a dict
 	"""
+	__single = None
 
 	def __init__(self):
 
 		self._parser = SafeConfigParser()
 		self._parser.optionxform = str
 		self._config = ""
+
+	@classmethod
+	def get_instance(cls):
+
+		# One first run runs __init__
+		# Subsequent requests just return an instance
+
+		if not cls.__single:
+
+			cls.__single = Reader()
+
+		return cls.__single
 
 	def get_config(self, arugment_config_file):
 		"""

@@ -24,9 +24,11 @@ if __name__ == "__main__":
 		
 		if os.path.isfile(sys.argv[1]):
 
-			server = server.CrabSTIXServer(server.LogHandler,sys.argv[1])
-			server.serve_forever(poll_interval=0.5)
-
+			try:
+				server = server.CrabSTIXServer(server.LogHandler,sys.argv[1])
+				server.serve_forever(poll_interval=0.5)
+			except KeyboardInterrupt:
+				pass
 		else:
 
 			print "Error: %s not found" % (sys.argv[1])
