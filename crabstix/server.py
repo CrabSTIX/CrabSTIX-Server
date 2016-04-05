@@ -121,6 +121,8 @@ class LogHandler(SocketServer.BaseRequestHandler):
 								#					 	   - https://github.com/TAXIIProject/libtaxii/blob/master/libtaxii/scripts/inbox_client.py
 
 								# Make a client
+								# TODO: Handle user and pass
+								# TODO: Handle https
 								client = tc.HttpClient()
 								client.set_auth_type(tc.HttpClient.AUTH_NONE)
 								client.set_use_https(False)
@@ -137,7 +139,7 @@ class LogHandler(SocketServer.BaseRequestHandler):
 									# Send to TAXII endpoint
 									http_resp = client.call_taxii_service2(self.server._config["TAXII"]["hostname"],
 																		   self.server._config["TAXII"]["inbox_endpoint"],
-																		    VID_TAXII_XML_11, inbox_xml)
+																		   VID_TAXII_XML_11, inbox_xml)
 
 									taxii_message = t.get_message_from_http_response(http_resp, inbox_message.message_id)
 								

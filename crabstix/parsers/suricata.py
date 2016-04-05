@@ -83,7 +83,7 @@ class Parser:
 				return False
 
 		#TODO: Time Zones
-		parsed_suricata_log["unix_timestamp"] = time.mktime(datetime.datetime.strptime(parsed_suricata_log["time"], "%m/%d/%Y-%M:%H:%S").timetuple())
+		parsed_suricata_log["unix_timestamp"] = time.mktime(datetime.datetime.strptime(parsed_suricata_log["time"], "%m/%d/%Y-%H:%M:%S").timetuple())
 
 
 		# Find IP's of interest
