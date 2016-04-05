@@ -60,6 +60,8 @@ class Parser:
 		:return: True if the log is a valid Suricata IDS log
 			
 		"""
+		argument_log = " ".join(argument_log.split(" ")[5:])
+
 		pattern = re.compile("^\d+\/\d+\/\d+\-\d+\:\d+\:\d+\.\d+\s+\[\*\*\]\s+\[\d+\:\d+\:\d+\]\s+.*?\[\*\*\]\s+\[")
 
 		if pattern.match(argument_log):
@@ -80,6 +82,7 @@ class Parser:
 		:return: STIX Incident 
 			
 		"""
+		argument_log = " ".join(argument_log.split(" ")[5:])
 		parsed_suricata_log = {}
 
 		for regex in self._regex:
