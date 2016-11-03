@@ -73,6 +73,22 @@ class Reader():
 				#Add it to the global config object
 				self._config[section] = option_dict
 
+			# Parse Destinations
+			for dest in self._config["DESTINATIONS"]:
+
+				destination_split = self._config["DESTINATIONS"][dest].split(",")
+				
+				self._config["DESTINATIONS"][dest] = {}
+				self._config["DESTINATIONS"][dest]["target"] = destination_split[0]
+				self._config["DESTINATIONS"][dest]["port"] = destination_split[1]
+				self._config["DESTINATIONS"][dest]["inbox_endpoint"] = destination_split[2]
+				self._config["DESTINATIONS"][dest]["collection_name"] = destination_split[3]
+				self._config["DESTINATIONS"][dest]["auth_type"] = destination_split[4]
+
+				if len(destination_split) > 5: 
+					self._config["DESTINATIONS"][dest]["username"] = destination_split[5]
+					self._config["DESTINATIONS"][dest]["password"] = destination_split[6]
+
 			return self._config
 
 		else:

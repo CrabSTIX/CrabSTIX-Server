@@ -18,9 +18,14 @@ from stix.core import STIXPackage, STIXHeader
 from stix.incident import Incident,Time
 from stix.common.related import RelatedObservable
 #Namespace fun
-from cybox.utils.nsparser import Namespace
-import cybox.utils
-import stix.utils
+
+from stix.core import STIXPackage
+from mixbox.idgen import set_id_namespace
+from mixbox.namespaces import Namespace
+
+#from cybox.utils.nsparser import Namespace
+#import cybox.utils
+#import stix.utils
 
 from cybox.core import Observable 
 from cybox.objects.address_object import Address
@@ -37,6 +42,9 @@ class Parser:
 	def __init__(self,argument_config):
 
 		self._name = __name__
+
+		# Used to specify desintation
+		self._destinations = ["my_taxii_server"]
 
 		self._config = argument_config
 
@@ -99,8 +107,8 @@ class Parser:
 		# Find IP's of interest
 		if IPAddress(parsed_suricata_log["source_ip"]).is_private() == False or IPAddress(parsed_suricata_log["destination_ip"]).is_private() == False:
 
-			# Name Space
-			stix.utils.idgen.set_id_namespace(Namespace(self._config["NAMESPACE"]["url"], self._config["NAMESPACE"]["name"],""))
+			# NameSpace
+			set_id_namespace(Namespace(self._config["NAMESPACE"]["url"], self._config["NAMESPACE"]["name"]))
 
 			stix_package = STIXPackage()
 

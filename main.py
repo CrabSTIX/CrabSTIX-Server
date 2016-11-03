@@ -15,8 +15,13 @@ Once started main.py handles the servers exit conditions.
 """
 import sys
 import os
+import threading
 from crabstix import server
 
+
+def signal_handler(signum, frame):
+
+	print "Exiting"
 
 if __name__ == "__main__":
 
@@ -25,10 +30,20 @@ if __name__ == "__main__":
 		if os.path.isfile(sys.argv[1]):
 
 			try:
+				
 				server = server.CrabSTIXServer(server.LogHandler,sys.argv[1])
-				server.serve_forever(poll_interval=0.5)
+				t = threading.Thread(target=server.serve_forever(poll_interval=0.5))
+				t.setDaemon(True)
+				t.start()
+
+				# Wait for end
+				signal.signal(signal.SIGINT, signal_handler)
+				signal.pause()
+			
 			except KeyboardInterrupt:
+			
 				pass
+		
 		else:
 
 			print "Error: %s not found" % (sys.argv[1])
