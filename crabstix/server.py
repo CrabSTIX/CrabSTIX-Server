@@ -171,9 +171,6 @@ class LogHandler(SocketServer.BaseRequestHandler):
 													   "server.py",
 													   "taxii_error")
 
-				
-
-
 				else:
 
 					self.server._logging.error("%s parser failed to parse a message, it will be added to the unparsable log." % (parser),

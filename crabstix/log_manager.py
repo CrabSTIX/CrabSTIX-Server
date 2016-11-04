@@ -5,8 +5,8 @@
 #\     \____|  | \// __ \| \_\ \/        \  |    |   |   |/     \ 
 # \______  /|__|  (____  /___  /_______  /  |____|   |___/___/\  \
 #        \/            \/    \/        \/                      \_/
-# Name	 :	config.py
-# Function :	Config reader
+# Name	 :	log_manager.py
+# Function :	Log Manager
 # Called By:	server.py
 
 #Internal Modules
