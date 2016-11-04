@@ -55,7 +55,6 @@ class CrabSTIXServer(SocketServer.ThreadingTCPServer):
 		# Load all the parsers
 		self._parsers = {}
 
-
 		for module in os.listdir("./crabstix/parsers"):
 
 			if module.endswith(".py") and module != "__init__.py":
@@ -70,6 +69,7 @@ class CrabSTIXServer(SocketServer.ThreadingTCPServer):
 		SocketServer.ThreadingTCPServer.__init__(self,
 												(self._config["SERVER"]["host"],int(self._config["SERVER"]["port"])),
 												RequestHandlerClass)
+
 		self._logging.info("Server started on %s:%s" % (self._config["SERVER"]["host"],int(self._config["SERVER"]["port"])),
 								   "server.py",
 								   "informational")
