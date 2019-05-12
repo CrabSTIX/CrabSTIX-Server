@@ -2,4 +2,4 @@
 """
 Super important! If you make your own parser, you need to declare it below.
 """
-import suricata
+import suricata  # noqa: F401

@@ -2,6 +2,5 @@
 """
 Load the parsers
 """
-import parsers
 
-
+import parsers  # noqa F401
